@@ -1,0 +1,190 @@
+//CODIGO ARDUINO TERMOMETRO DIGITAL AJUSTABLE CON ALARMA
+//C++
+//AUTORES: Luis Agurto, Carlos Jarrín
+
+
+#include <Keypad.h>
+#include <LiquidCrystal.h>
+//ALARMA
+float sensor = 0;
+float temp = 0;
+float temperature=30;
+int RED = LOW;
+int GREEN = LOW;
+int SON = LOW;
+int SONI = LOW;
+
+//CONSTANTES SONIDO
+const int pin = 2;
+int State = LOW;             // ledState used to set the LED
+unsigned long previousMillis = 0;        // will store last time LED was updated
+const long interval = 450;           // interval at which to blink (milliseconds)
+
+
+//TECLADO
+const byte FILAS=4;
+const byte COLUMNAS=4;
+char keys[FILAS][COLUMNAS]{
+  {'1','2','3','+'},
+  {'4','5','6','-'},
+  {'7','8','9','C'},
+  {'.','0','#',' '}
+};
+
+byte pinesFilas[FILAS] = {9,8,7,6};
+byte pinesColumnas[COLUMNAS] = {5,4,3,A5};
+
+Keypad teclado = Keypad(makeKeymap(keys), pinesFilas, pinesColumnas, FILAS, COLUMNAS);
+
+// TECLADO
+
+char TECLA;       // almacena la tecla presionada
+char CLAVE[5];        // almacena en un array 6 digitos ingresados
+char CLAVE_MAESTRA[5] = "1234";   // almacena en un array la contraseña maestra
+char TEMPERATURA[7]; 
+byte INDICE = 0;
+
+//LCD
+LiquidCrystal lcd(12,11,10,A1,A2,A3,A4);
+
+void setup() {
+  pinMode(13,OUTPUT);
+  digitalWrite(13,HIGH);
+  
+//LED
+  pinMode(0,OUTPUT);
+  pinMode(1,OUTPUT);
+
+// PIEZO
+  pinMode(2,OUTPUT);
+  
+  
+// Iniciar la clave  
+  lcd.begin(16, 2);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Clave: ");
+
+//SONIDO
+  pinMode(pin, OUTPUT);
+}
+
+void loop() {
+  
+  lcd.setCursor(0,1);
+  lcd.print("Temp(C): ");
+  
+  
+  //SENSOR
+  sensor = analogRead(A0);
+  temp = 125.00+(165.00/338.00)*(sensor-358.00);
+  lcd.setCursor(9,1);
+  lcd.print(temp);
+  //delay(1000);
+
+  
+  //LED
+  if (temp >= temperature) {(SON = HIGH);}
+  if (temp >= temperature) {(RED = HIGH);
+                             (GREEN=LOW);}
+  
+  if (temp <= temperature - 6.00) {(SONI = HIGH);}
+  if (temp <= temperature - 6.00) {(RED = HIGH);
+                                     (GREEN=LOW);}
+  
+  //PIEZO | SONIDO
+  if (temp < temperature && temp > temperature - 6.00) {(GREEN = HIGH);
+                                                         (SON=LOW); 
+                                                         (RED=LOW); 
+                                                         (SONI=LOW);}
+  if (SON == HIGH || SONI == HIGH) {
+  
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval) {
+    // save the last time you blinked the piezo
+    previousMillis = currentMillis;
+
+    // if the piezo is off turn it on and vice-versa:
+    if (State == LOW) {
+      State = HIGH;
+    } else {
+      State = LOW;
+    }
+
+    // set the piezo with the State of the variable:
+    if (State==HIGH) {tone(pin,550,200);}
+  }
+  }
+  digitalWrite(0,GREEN);                
+  digitalWrite(1,RED);
+
+  
+  
+
+  //TECLADO
+  TECLA = teclado.getKey();   // obtiene tecla presionada y asigna a variable
+  if (TECLA)        // comprueba que se haya presionado una tecla
+  {
+    CLAVE[INDICE] = TECLA;    // almacena en array la tecla presionada
+    INDICE++;       // incrementa indice en uno
+    //Serial.println(TECLA);    // envia a monitor serial la tecla presionada
+  	lcd.setCursor(INDICE+7,0);
+  	lcd.print(TECLA);
+  	delay(300);
+  }
+
+  if(INDICE == 4) // si ya se almacenaron los 6 digitos
+  {
+    INDICE = 0;
+    if(!strcmp(CLAVE, CLAVE_MAESTRA))  { // compara clave ingresada con clave maestra
+      //Serial.println(" Correcta");  // imprime en monitor serial que es correcta la clave
+    	lcd.setCursor(0,1);
+      	lcd.print(" Correcta      ");
+  		delay(1500);
+      	lcd.setCursor(0,0);      
+      	lcd.print("NewTemp:       ");
+      	//lcd.print("            ");
+    	
+      while (INDICE<6 )
+        {
+        TECLA = teclado.getKey();
+  	  if (TECLA)   // comprueba que se haya presionado una tecla
+  {
+    
+    TEMPERATURA[INDICE] = TECLA;    // almacena en array la tecla presionada
+    INDICE++;       // incrementa indice en uno
+  	lcd.setCursor(INDICE+8,0);
+  	lcd.print(TECLA);
+  	delay(300);
+        
+  }
+        if (TECLA==' ')// Enter 
+  {
+   INDICE=6;// settea en 6 pa que se salga del while
+   }
+   if (TECLA=='C') // Cancelar
+  {
+   lcd.setCursor(8,0);
+  	lcd.print("        ");
+    INDICE=0;// settea en 6 pa que se salga del while
+   }
+        }//Aqui se cierra el while
+      temperature=atof(TEMPERATURA);lcd.setCursor(0,0);
+      lcd.print(temperature);
+      delay(1000);
+		INDICE=0;lcd.setCursor(0,0);lcd.print("Clave:    ");
+      lcd.setCursor(8,0);      
+      	lcd.print("----     ");
+      
+      }else{
+      //Serial.println(" Incorrecta");  // imprime en monitor serial que es incorrecta la clave
+    	lcd.setCursor(0,1);
+  		lcd.print(" Incorrecta   ");
+        delay(1500);
+      	lcd.setCursor(8,0);      
+      	lcd.print("----     ");}
+  
+   }
+
+  }
